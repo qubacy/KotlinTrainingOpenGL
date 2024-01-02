@@ -16,10 +16,10 @@ abstract class Figure(
     }
 
     protected open val mVertexShaderCode =
-        "uniform mat4 uMVPMatrix;" +
+        "uniform mat4 uVPMatrix;" +
         "attribute vec4 vPosition;" +
         "void main() {" +
-        "  gl_Position = uMVPMatrix * vPosition;" +
+        "  gl_Position = uVPMatrix * vPosition;" +
         "}"
     protected open val mFragmentShaderCode =
         "precision mediump float;" +
@@ -29,7 +29,7 @@ abstract class Figure(
                 "}"
     protected var mProgram: Int
 
-    protected var mMVPMatrixHandle: Int = 0
+    protected var mVPMatrixHandle: Int = 0
 
     protected val mVertexBuffer: FloatBuffer =
         ByteBuffer.allocateDirect(vertexArray.size * Float.SIZE_BYTES).run {
@@ -66,9 +66,9 @@ abstract class Figure(
     fun draw(mvpMatrix: FloatArray) {
         GLES20.glUseProgram(mProgram)
 
-        mMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix")
+        mVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uVPMatrix")
 
-        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0)
+        GLES20.glUniformMatrix4fv(mVPMatrixHandle, 1, false, mvpMatrix, 0)
 
         GLES20.glGetAttribLocation(mProgram, "vPosition").also {
             GLES20.glEnableVertexAttribArray(it)

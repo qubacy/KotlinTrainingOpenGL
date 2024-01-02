@@ -9,11 +9,15 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class CanvasRenderer : Renderer {
-    private val mMVPMatrix = FloatArray(16)
+    private val mVPMatrix = FloatArray(16)
     private val mProjectionMatrix = FloatArray(16)
     private val mViewMatrix = FloatArray(16)
+    private val rotationMatrix = FloatArray(16)
 
     private lateinit var mFigure: Figure
+
+    @Volatile
+    var angle: Float = 0f
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -42,6 +46,8 @@ class CanvasRenderer : Renderer {
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        val scratch = FloatArray(16)
+
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         Matrix.setLookAtM(
@@ -51,11 +57,14 @@ class CanvasRenderer : Renderer {
             0f, 1.0f, 0.0f
         )
         Matrix.multiplyMM(
-            mMVPMatrix, 0,
+            mVPMatrix, 0,
             mProjectionMatrix, 0,
             mViewMatrix, 0
         )
 
-        mFigure.draw(mMVPMatrix)
+        Matrix.setRotateM(rotationMatrix, 0, angle, 0f, 0f, -1.0f)
+        Matrix.multiplyMM(scratch, 0, mVPMatrix, 0, rotationMatrix, 0)
+
+        mFigure.draw(scratch)
     }
 }
