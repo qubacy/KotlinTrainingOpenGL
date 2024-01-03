@@ -9,7 +9,8 @@ import java.nio.ShortBuffer
 
 abstract class Figure(
     val vertexArray: FloatArray,
-    val vertexDrawingOrder: ShortArray
+    val vertexDrawingOrder: ShortArray? = null,
+    val color: FloatArray = floatArrayOf(1f, 1f, 1f, 1f)
 ) {
     companion object {
         const val COORDS_PER_VERTEX = 3
@@ -23,10 +24,10 @@ abstract class Figure(
         "}"
     protected open val mFragmentShaderCode =
         "precision mediump float;" +
-                "uniform vec4 vColor;" +
-                "void main() {" +
-                "  gl_FragColor = vColor;" +
-                "}"
+        "uniform vec4 vColor;" +
+        "void main() {" +
+        "  gl_FragColor = vColor;" +
+        "}"
     protected var mProgram: Int
 
     protected var mVPMatrixHandle: Int = 0
@@ -39,7 +40,7 @@ abstract class Figure(
                 position(0)
             }
         }
-    private val mVertexDrawingOrderBuffer: ShortBuffer =
+    private val mVertexDrawingOrderBuffer: ShortBuffer? = if (vertexDrawingOrder != null)
         ByteBuffer.allocateDirect(vertexDrawingOrder.size * Short.SIZE_BYTES).run {
             order(ByteOrder.nativeOrder())
             asShortBuffer().apply {
@@ -47,9 +48,8 @@ abstract class Figure(
                 position(0)
             }
         }
+        else null
     val vertexCount = vertexArray.size / COORDS_PER_VERTEX
-
-    protected open val mColor: FloatArray = floatArrayOf(1f, 1f, 1f, 1f)
 
     init {
         val vertexShader = GL2Util.loadShader(GLES20.GL_VERTEX_SHADER, mVertexShaderCode)
@@ -81,11 +81,15 @@ abstract class Figure(
                 mVertexBuffer
             )
             GLES20.glGetUniformLocation(mProgram, "vColor").also { colorHandle ->
-                GLES20.glUniform4fv(colorHandle, 1, mColor, 0)
+                GLES20.glUniform4fv(colorHandle, 1, color, 0)
             }
 
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, vertexDrawingOrder.size,
-                GLES20.GL_UNSIGNED_SHORT, mVertexDrawingOrderBuffer)
+            if (mVertexDrawingOrderBuffer != null)
+                GLES20.glDrawElements(GLES20.GL_TRIANGLES, vertexDrawingOrder!!.size,
+                    GLES20.GL_UNSIGNED_SHORT, mVertexDrawingOrderBuffer)
+            else
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount)
+
             GLES20.glDisableVertexAttribArray(it)
         }
     }

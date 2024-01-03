@@ -4,6 +4,9 @@ import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry._commo
 
 class Square(
     vertexArray: FloatArray
-) : Figure(vertexArray, shortArrayOf(0, 1, 2, 0, 2, 3)) {
+) : Figure(
+    vertexArray,
+    shortArrayOf(0, 1, 2, 0, 2, 3)
+) {
 
 }

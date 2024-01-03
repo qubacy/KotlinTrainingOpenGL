@@ -41,7 +41,7 @@ class CanvasView(
                 if (y > height / 2) dx *= -1
                 if (x < width / 2) dy *= -1
 
-                mRenderer.angle += (dx + dy) * TOUCH_SCALE_FACTOR
+                mRenderer.handleRotation(dx * TOUCH_SCALE_FACTOR, dy * TOUCH_SCALE_FACTOR)
 
                 requestRender()
             }
