@@ -3,16 +3,21 @@ package com.qubacy.kotlintrainingopengl.component.canvas.renderer
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView.Renderer
 import android.opengl.Matrix
+import android.util.Log
 import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry._common.Figure
 import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry.parallelepiped.Parallelepiped
-import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry.square.Square
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 class CanvasRenderer : Renderer {
     companion object {
+        const val TAG = "CANVAS_RENDERER"
 
+        private val CENTER_POSITION = floatArrayOf(0f, 0f, 0f)
     }
 
     private val mVPMatrix = FloatArray(16)
@@ -21,23 +26,41 @@ class CanvasRenderer : Renderer {
 
     private lateinit var mFigure: Figure
 
-    @Volatile
-    private var angle = 0f
+    private var mCameraRadius = 3.5f
 
-    private var mRotationAxis = floatArrayOf(0f, 0f, -1f)
+    @Volatile
+    private var mCameraCenterLocation = floatArrayOf(0f, 0f, 3.5f)
+    @Volatile
+    private var mCameraLocation = floatArrayOf(mCameraRadius, 0f, mCameraCenterLocation[2])//(3.505f, 0f, 3.505f)
+    @Volatile
+    private var mCameraMadeWay = 0f
+
+    private fun getTranslatedCameraLocation(dx: Float, dy: Float): FloatArray {
+        val signedDX = dx * -1
+        val signedDY = dy * -1
+
+        if (abs(signedDX) < abs(signedDY)) return mCameraLocation
+
+        val cameraWayLength = (2 * PI * mCameraRadius).toFloat()
+        val cameraMadeWay = (signedDX + mCameraMadeWay) % cameraWayLength
+        val cameraMadeWayNormalized =
+            if (cameraMadeWay < 0) cameraMadeWay + cameraWayLength
+            else cameraMadeWay
+
+        val madeWayAngle = ((180 * cameraMadeWayNormalized) / (PI * mCameraRadius)).toFloat()
+
+        val newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngle)
+        val newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngle)
+
+        mCameraMadeWay = cameraMadeWayNormalized
+
+        Log.d(TAG, "getTranslatedCameraLocation(): dx = $dx; newX = $newX; newY = $newY")
+
+        return floatArrayOf(newX, newY, mCameraLocation[2])
+    }
 
     fun handleRotation(dx: Float, dy: Float) {
-        mRotationAxis =
-            if (abs(dx) > abs(dy)) {
-                angle += dx
-
-                floatArrayOf(0f, 0f, -1f)
-            }
-            else {
-                angle += dy
-
-                floatArrayOf(0f, -1f, 0f)
-            }
+        mCameraLocation = getTranslatedCameraLocation(dx, dy)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -76,7 +99,7 @@ class CanvasRenderer : Renderer {
 
         Matrix.setLookAtM(
             mViewMatrix, 0,
-            3.505f, 0f, 3.505f,
+            mCameraLocation[0], mCameraLocation[1], mCameraLocation[2],
             0f, 0f, 0f,
             0f, 0f, 1.0f
         )
@@ -86,18 +109,18 @@ class CanvasRenderer : Renderer {
             mViewMatrix, 0
         )
 
-        val rotationMatrix = FloatArray(16)
+//        val rotationMatrix = FloatArray(16)
 
-        Matrix.setRotateM(
-            rotationMatrix, 0,
-            angle,
-            mRotationAxis[0], mRotationAxis[1], mRotationAxis[2]
-        )
+//        Matrix.setRotateM(
+//            rotationMatrix, 0,
+//            angle,
+//            mRotationAxis[0], mRotationAxis[1], mRotationAxis[2]
+//        )
 
-        val rotated = FloatArray(16)
+//        val rotated = FloatArray(16)
+//
+//        Matrix.multiplyMM(rotated, 0, mVPMatrix, 0, rotationMatrix, 0)
 
-        Matrix.multiplyMM(rotated, 0, mVPMatrix, 0, rotationMatrix, 0)
-
-        mFigure.draw(rotated)
+        mFigure.draw(mVPMatrix)
     }
 }
