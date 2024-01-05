@@ -12,12 +12,14 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 class CanvasRenderer : Renderer {
     companion object {
         const val TAG = "CANVAS_RENDERER"
 
         private val CENTER_POSITION = floatArrayOf(0f, 0f, 0f)
+        private val SPHERE_RADIUS = 7f
     }
 
     private val mVPMatrix = FloatArray(16)
@@ -26,37 +28,62 @@ class CanvasRenderer : Renderer {
 
     private lateinit var mFigure: Figure
 
-    private var mCameraRadius = 3.5f
+    private var mCameraRadius = SPHERE_RADIUS
 
     @Volatile
-    private var mCameraCenterLocation = floatArrayOf(0f, 0f, 3.5f)
+    private var mCameraCenterLocation = floatArrayOf(0f, 0f, 0f)
     @Volatile
-    private var mCameraLocation = floatArrayOf(mCameraRadius, 0f, mCameraCenterLocation[2])//(3.505f, 0f, 3.505f)
+    private var mCameraLocation = floatArrayOf(mCameraRadius, 0f, mCameraCenterLocation[2])
     @Volatile
-    private var mCameraMadeWay = 0f
+    private var mCameraMadeWayHorizontal = 0f
+    @Volatile
+    private var mCameraMadeWayVertical = 0f
 
     private fun getTranslatedCameraLocation(dx: Float, dy: Float): FloatArray {
         val signedDX = dx * -1
-        val signedDY = dy * -1
+        val signedDY = dy * 1
 
-        if (abs(signedDX) < abs(signedDY)) return mCameraLocation
+        var newX = mCameraLocation[0]
+        var newY = mCameraLocation[1]
+        var newZ = mCameraLocation[2]
 
-        val cameraWayLength = (2 * PI * mCameraRadius).toFloat()
-        val cameraMadeWay = (signedDX + mCameraMadeWay) % cameraWayLength
-        val cameraMadeWayNormalized =
-            if (cameraMadeWay < 0) cameraMadeWay + cameraWayLength
-            else cameraMadeWay
+        if (abs(signedDX) >= abs(signedDY)) {
+            val cameraWayLength = (2 * PI * mCameraRadius).toFloat()
+            val cameraMadeWay = (signedDX + mCameraMadeWayHorizontal) % cameraWayLength
+            val cameraMadeWayNormalized =
+                if (cameraMadeWay < 0) cameraMadeWay + cameraWayLength
+                else cameraMadeWay
 
-        val madeWayAngle = ((180 * cameraMadeWayNormalized) / (PI * mCameraRadius)).toFloat()
+            val madeWayAngle = ((180 * cameraMadeWayNormalized) / (PI * mCameraRadius)).toFloat()
 
-        val newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngle)
-        val newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngle)
+            newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngle)
+            newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngle)
 
-        mCameraMadeWay = cameraMadeWayNormalized
+            mCameraMadeWayHorizontal = cameraMadeWayNormalized
 
-        Log.d(TAG, "getTranslatedCameraLocation(): dx = $dx; newX = $newX; newY = $newY")
+        } else {
+            val cameraWayLength = (PI * SPHERE_RADIUS / 2).toFloat()
+            val cameraMadeWayNormalized = (signedDX + mCameraMadeWayVertical) % cameraWayLength
 
-        return floatArrayOf(newX, newY, mCameraLocation[2])
+            val madeWayAngleVertical = ((180 * cameraMadeWayNormalized) / (PI * SPHERE_RADIUS)).toFloat()
+
+            newZ = CENTER_POSITION[2] + SPHERE_RADIUS * sin(madeWayAngleVertical)
+            val newCameraRadius = sqrt(SPHERE_RADIUS * SPHERE_RADIUS - newZ * newZ)
+
+            mCameraMadeWayHorizontal *= (newCameraRadius / mCameraRadius)
+            mCameraRadius = newCameraRadius
+
+            val madeWayAngleHorizontal = ((180 * mCameraMadeWayHorizontal) / (PI * mCameraRadius)).toFloat()
+
+            newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngleHorizontal)
+            newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngleHorizontal)
+
+            mCameraMadeWayVertical = cameraMadeWayNormalized
+        }
+
+        Log.d(TAG, "getTranslatedCameraLocation(): dx = $dx; newX = $newX; newY = $newY; newZ = $newZ")
+
+        return floatArrayOf(newX, newY, newZ)
     }
 
     fun handleRotation(dx: Float, dy: Float) {
@@ -78,6 +105,7 @@ class CanvasRenderer : Renderer {
                 0.5f, 0.5f, 0.5f
             )
         )
+        mCameraLocation = getTranslatedCameraLocation(0f, 12f)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
