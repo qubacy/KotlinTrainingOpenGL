@@ -33,6 +33,10 @@ class CanvasView(
         val x: Float = e.x
         val y: Float = e.y
 
+        // todo: implement ZOOMing gesture..
+
+
+
         when (e.action) {
             MotionEvent.ACTION_MOVE -> {
                 var dx: Float = x - previousX

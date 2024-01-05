@@ -39,6 +39,10 @@ class CanvasRenderer : Renderer {
     @Volatile
     private var mCameraMadeWayVertical = 0f
 
+    // todo: handle ZOOMing..
+
+
+
     private fun getTranslatedCameraLocation(dx: Float, dy: Float): FloatArray {
         val signedDX = dx * -1
         val signedDY = dy * 1
@@ -123,7 +127,7 @@ class CanvasRenderer : Renderer {
             mProjectionMatrix, 0,
             -ratio, ratio,
             -1f, 1f,
-            3f, 8f
+            3f, SPHERE_RADIUS + 1f
         )
     }
 
