@@ -11,7 +11,7 @@ class CanvasView(
     attrs: AttributeSet
 ) : GLSurfaceView(context, attrs) {
     companion object {
-        private const val TOUCH_SCALE_FACTOR: Float = 180.0f / 128000f //320f
+        private const val TOUCH_SCALE_FACTOR: Float = 180.0f / 12800f //320f
     }
 
     private val mRenderer: CanvasRenderer
@@ -37,9 +37,6 @@ class CanvasView(
             MotionEvent.ACTION_MOVE -> {
                 var dx: Float = x - previousX
                 var dy: Float = y - previousY
-
-//                if (y > height / 2) dx *= -1
-//                if (x < width / 2) dy *= -1
 
                 mRenderer.handleRotation(dx * TOUCH_SCALE_FACTOR, dy * TOUCH_SCALE_FACTOR)
 

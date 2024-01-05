@@ -54,7 +54,7 @@ class CanvasRenderer : Renderer {
                 if (cameraMadeWay < 0) cameraMadeWay + cameraWayLength
                 else cameraMadeWay
 
-            val madeWayAngle = ((180 * cameraMadeWayNormalized) / (PI * mCameraRadius)).toFloat()
+            val madeWayAngle = cameraMadeWayNormalized / mCameraRadius //((180 * cameraMadeWayNormalized) / (PI * mCameraRadius)).toFloat()
 
             newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngle)
             newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngle)
@@ -63,9 +63,15 @@ class CanvasRenderer : Renderer {
 
         } else {
             val cameraWayLength = (PI * SPHERE_RADIUS / 2).toFloat()
-            val cameraMadeWayNormalized = (signedDX + mCameraMadeWayVertical) % cameraWayLength
+            val cameraMadeWayNormalized = signedDY + mCameraMadeWayVertical//(signedDY + mCameraMadeWayVertical) % cameraWayLength
 
-            val madeWayAngleVertical = ((180 * cameraMadeWayNormalized) / (PI * SPHERE_RADIUS)).toFloat()
+            Log.d(TAG, "getTranslatedCameraLocation(): cameraMadeWayNormalized = $cameraMadeWayNormalized;")
+
+            if (abs(cameraMadeWayNormalized) >= cameraWayLength) return mCameraLocation
+
+            val madeWayAngleVertical = cameraMadeWayNormalized / SPHERE_RADIUS //((180 * cameraMadeWayNormalized) / (PI * SPHERE_RADIUS)).toFloat()
+
+            Log.d(TAG, "getTranslatedCameraLocation(): madeWayAngleVertical = $madeWayAngleVertical;")
 
             newZ = CENTER_POSITION[2] + SPHERE_RADIUS * sin(madeWayAngleVertical)
             val newCameraRadius = sqrt(SPHERE_RADIUS * SPHERE_RADIUS - newZ * newZ)
@@ -73,7 +79,7 @@ class CanvasRenderer : Renderer {
             mCameraMadeWayHorizontal *= (newCameraRadius / mCameraRadius)
             mCameraRadius = newCameraRadius
 
-            val madeWayAngleHorizontal = ((180 * mCameraMadeWayHorizontal) / (PI * mCameraRadius)).toFloat()
+            val madeWayAngleHorizontal = mCameraMadeWayHorizontal / mCameraRadius //((180 * mCameraMadeWayHorizontal) / (PI * mCameraRadius)).toFloat()
 
             newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngleHorizontal)
             newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngleHorizontal)
@@ -81,7 +87,7 @@ class CanvasRenderer : Renderer {
             mCameraMadeWayVertical = cameraMadeWayNormalized
         }
 
-        Log.d(TAG, "getTranslatedCameraLocation(): dx = $dx; newX = $newX; newY = $newY; newZ = $newZ")
+        Log.d(TAG, "getTranslatedCameraLocation(): dx = $dx; dy = $dy; newX = $newX; newY = $newY; newZ = $newZ")
 
         return floatArrayOf(newX, newY, newZ)
     }
@@ -117,7 +123,7 @@ class CanvasRenderer : Renderer {
             mProjectionMatrix, 0,
             -ratio, ratio,
             -1f, 1f,
-            3f, 7f
+            3f, 8f
         )
     }
 
