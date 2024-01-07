@@ -19,7 +19,10 @@ class CanvasRenderer : Renderer {
         const val TAG = "CANVAS_RENDERER"
 
         private val CENTER_POSITION = floatArrayOf(0f, 0f, 0f)
-        private val DEFAULT_SPHERE_RADIUS = 7f
+        private const val DEFAULT_SPHERE_RADIUS = 7f
+
+        private const val MIN_SCALE_FACTOR = 0.25f
+        private const val MAX_SCALE_FACTOR = 3f
     }
 
     private val mVPMatrix = FloatArray(16)
@@ -39,6 +42,10 @@ class CanvasRenderer : Renderer {
     private var mCameraMadeWayHorizontal = 0f
     @Volatile
     private var mCameraMadeWayVertical = 0f
+    @Volatile
+    private var mViewportRatio = 1f
+    @Volatile
+    private var mCurScaleFactor = 1f
 
     private fun getTranslatedCameraLocation(dx: Float, dy: Float): FloatArray {
         val signedDX = dx * -1
@@ -55,7 +62,7 @@ class CanvasRenderer : Renderer {
                 if (cameraMadeWay < 0) cameraMadeWay + cameraWayLength
                 else cameraMadeWay
 
-            val madeWayAngle = cameraMadeWayNormalized / mCameraRadius //((180 * cameraMadeWayNormalized) / (PI * mCameraRadius)).toFloat()
+            val madeWayAngle = cameraMadeWayNormalized / mCameraRadius
 
             newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngle)
             newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngle)
@@ -64,13 +71,13 @@ class CanvasRenderer : Renderer {
 
         } else {
             val cameraWayLength = (PI * mSphereRadius / 2).toFloat()
-            val cameraMadeWayNormalized = signedDY + mCameraMadeWayVertical//(signedDY + mCameraMadeWayVertical) % cameraWayLength
+            val cameraMadeWayNormalized = signedDY + mCameraMadeWayVertical
 
             Log.d(TAG, "getTranslatedCameraLocation(): cameraMadeWayNormalized = $cameraMadeWayNormalized;")
 
             if (abs(cameraMadeWayNormalized) >= cameraWayLength) return mCameraLocation
 
-            val madeWayAngleVertical = cameraMadeWayNormalized / mSphereRadius //((180 * cameraMadeWayNormalized) / (PI * SPHERE_RADIUS)).toFloat()
+            val madeWayAngleVertical = cameraMadeWayNormalized / mSphereRadius
 
             Log.d(TAG, "getTranslatedCameraLocation(): madeWayAngleVertical = $madeWayAngleVertical;")
 
@@ -80,7 +87,7 @@ class CanvasRenderer : Renderer {
             mCameraMadeWayHorizontal *= (newCameraRadius / mCameraRadius)
             mCameraRadius = newCameraRadius
 
-            val madeWayAngleHorizontal = mCameraMadeWayHorizontal / mCameraRadius //((180 * mCameraMadeWayHorizontal) / (PI * mCameraRadius)).toFloat()
+            val madeWayAngleHorizontal = mCameraMadeWayHorizontal / mCameraRadius
 
             newX = mCameraCenterLocation[0] + mCameraRadius * cos(madeWayAngleHorizontal)
             newY = mCameraCenterLocation[1] + mCameraRadius * sin(madeWayAngleHorizontal)
@@ -98,10 +105,18 @@ class CanvasRenderer : Renderer {
     }
 
     fun handleScale(scaleFactor: Float) {
-        mSphereRadius *= scaleFactor
-        mCameraRadius *= scaleFactor
+        val newScaleFactor = mCurScaleFactor * (1 / scaleFactor)
 
-        mCameraLocation = floatArrayOf(mCameraLocation[0] * scaleFactor, mCameraLocation[1] * scaleFactor, mCameraLocation[2] * scaleFactor)
+        if (newScaleFactor !in MIN_SCALE_FACTOR..MAX_SCALE_FACTOR) return
+
+        mCurScaleFactor = newScaleFactor
+
+        Matrix.frustumM(
+            mProjectionMatrix, 0,
+            -mViewportRatio, mViewportRatio,
+            -1f, 1f,
+            3f, mSphereRadius * mCurScaleFactor + 1f
+        )
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -125,11 +140,11 @@ class CanvasRenderer : Renderer {
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
 
-        val ratio: Float = width.toFloat() / height.toFloat()
+        mViewportRatio = width.toFloat() / height.toFloat()
 
         Matrix.frustumM(
             mProjectionMatrix, 0,
-            -ratio, ratio,
+            -mViewportRatio, mViewportRatio,
             -1f, 1f,
             3f, mSphereRadius + 1f
         )
@@ -141,7 +156,9 @@ class CanvasRenderer : Renderer {
 
         Matrix.setLookAtM(
             mViewMatrix, 0,
-            mCameraLocation[0], mCameraLocation[1], mCameraLocation[2],
+            mCameraLocation[0] * mCurScaleFactor,
+            mCameraLocation[1] * mCurScaleFactor,
+            mCameraLocation[2] * mCurScaleFactor,
             0f, 0f, 0f,
             0f, 0f, 1.0f
         )

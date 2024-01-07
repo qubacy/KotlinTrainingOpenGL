@@ -18,12 +18,13 @@ class CanvasView(
         const val TAG = "CANVAS_VIEW"
 
         private const val TOUCH_SCALE_FACTOR: Float = 180.0f / 12800f //320f
+        private const val AFTER_SCALE_DELAY = 300L
     }
 
     private val mRenderer: CanvasRenderer
     private val mScaleGestureDetector: ScaleGestureDetector
 
-    private var mTotalScaleFactor = 1f
+    private var mLastScaleEventTimestamp = 0L
 
     init {
         setEGLContextClientVersion(2)
@@ -54,8 +55,15 @@ class CanvasView(
 
         when (e.action) {
             MotionEvent.ACTION_MOVE -> {
-                var dx: Float = x - previousX
-                var dy: Float = y - previousY
+                val curTime = System.currentTimeMillis()
+
+                Log.d(TAG, "onTouchEvent(): ACTION_MOVE: mLastScaleEventTimestamp = $mLastScaleEventTimestamp; curTime = $curTime")
+
+                if (mLastScaleEventTimestamp + AFTER_SCALE_DELAY > curTime)
+                    return false
+
+                val dx: Float = x - previousX
+                val dy: Float = y - previousY
 
                 mRenderer.handleRotation(dx * TOUCH_SCALE_FACTOR, dy * TOUCH_SCALE_FACTOR)
 
@@ -70,24 +78,16 @@ class CanvasView(
     }
 
     override fun onScale(detector: ScaleGestureDetector): Boolean {
-        mTotalScaleFactor *= (detector.scaleFactor)
-
-        mRenderer.handleScale(mTotalScaleFactor)
-
-        Log.d(TAG, "onScale: mTotalScaleFactor = $mTotalScaleFactor; scaleFactor = ${detector.scaleFactor};")
+        mRenderer.handleScale(detector.scaleFactor)
 
         return true
     }
 
     override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-        mTotalScaleFactor = 1f
-
         return true
     }
 
     override fun onScaleEnd(detector: ScaleGestureDetector) {
-        // ??
-
-
+        mLastScaleEventTimestamp = System.currentTimeMillis()
     }
 }
