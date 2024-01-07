@@ -19,7 +19,7 @@ class CanvasRenderer : Renderer {
         const val TAG = "CANVAS_RENDERER"
 
         private val CENTER_POSITION = floatArrayOf(0f, 0f, 0f)
-        private val SPHERE_RADIUS = 7f
+        private val DEFAULT_SPHERE_RADIUS = 7f
     }
 
     private val mVPMatrix = FloatArray(16)
@@ -28,7 +28,8 @@ class CanvasRenderer : Renderer {
 
     private lateinit var mFigure: Figure
 
-    private var mCameraRadius = SPHERE_RADIUS
+    private var mSphereRadius = DEFAULT_SPHERE_RADIUS
+    private var mCameraRadius = mSphereRadius
 
     @Volatile
     private var mCameraCenterLocation = floatArrayOf(0f, 0f, 0f)
@@ -38,10 +39,6 @@ class CanvasRenderer : Renderer {
     private var mCameraMadeWayHorizontal = 0f
     @Volatile
     private var mCameraMadeWayVertical = 0f
-
-    // todo: handle ZOOMing..
-
-
 
     private fun getTranslatedCameraLocation(dx: Float, dy: Float): FloatArray {
         val signedDX = dx * -1
@@ -66,19 +63,19 @@ class CanvasRenderer : Renderer {
             mCameraMadeWayHorizontal = cameraMadeWayNormalized
 
         } else {
-            val cameraWayLength = (PI * SPHERE_RADIUS / 2).toFloat()
+            val cameraWayLength = (PI * mSphereRadius / 2).toFloat()
             val cameraMadeWayNormalized = signedDY + mCameraMadeWayVertical//(signedDY + mCameraMadeWayVertical) % cameraWayLength
 
             Log.d(TAG, "getTranslatedCameraLocation(): cameraMadeWayNormalized = $cameraMadeWayNormalized;")
 
             if (abs(cameraMadeWayNormalized) >= cameraWayLength) return mCameraLocation
 
-            val madeWayAngleVertical = cameraMadeWayNormalized / SPHERE_RADIUS //((180 * cameraMadeWayNormalized) / (PI * SPHERE_RADIUS)).toFloat()
+            val madeWayAngleVertical = cameraMadeWayNormalized / mSphereRadius //((180 * cameraMadeWayNormalized) / (PI * SPHERE_RADIUS)).toFloat()
 
             Log.d(TAG, "getTranslatedCameraLocation(): madeWayAngleVertical = $madeWayAngleVertical;")
 
-            newZ = CENTER_POSITION[2] + SPHERE_RADIUS * sin(madeWayAngleVertical)
-            val newCameraRadius = sqrt(SPHERE_RADIUS * SPHERE_RADIUS - newZ * newZ)
+            newZ = CENTER_POSITION[2] + mSphereRadius * sin(madeWayAngleVertical)
+            val newCameraRadius = sqrt(mSphereRadius * mSphereRadius - newZ * newZ)
 
             mCameraMadeWayHorizontal *= (newCameraRadius / mCameraRadius)
             mCameraRadius = newCameraRadius
@@ -98,6 +95,13 @@ class CanvasRenderer : Renderer {
 
     fun handleRotation(dx: Float, dy: Float) {
         mCameraLocation = getTranslatedCameraLocation(dx, dy)
+    }
+
+    fun handleScale(scaleFactor: Float) {
+        mSphereRadius *= scaleFactor
+        mCameraRadius *= scaleFactor
+
+        mCameraLocation = floatArrayOf(mCameraLocation[0] * scaleFactor, mCameraLocation[1] * scaleFactor, mCameraLocation[2] * scaleFactor)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -127,7 +131,7 @@ class CanvasRenderer : Renderer {
             mProjectionMatrix, 0,
             -ratio, ratio,
             -1f, 1f,
-            3f, SPHERE_RADIUS + 1f
+            3f, mSphereRadius + 1f
         )
     }
 

@@ -3,23 +3,33 @@ package com.qubacy.kotlintrainingopengl.component.canvas.view
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
+import android.view.ScaleGestureDetector.OnScaleGestureListener
 import com.qubacy.kotlintrainingopengl.component.canvas.renderer.CanvasRenderer
 
 class CanvasView(
     context: Context,
     attrs: AttributeSet
-) : GLSurfaceView(context, attrs) {
+) : GLSurfaceView(context, attrs),
+    OnScaleGestureListener {
     companion object {
+        const val TAG = "CANVAS_VIEW"
+
         private const val TOUCH_SCALE_FACTOR: Float = 180.0f / 12800f //320f
     }
 
     private val mRenderer: CanvasRenderer
+    private val mScaleGestureDetector: ScaleGestureDetector
+
+    private var mTotalScaleFactor = 1f
 
     init {
         setEGLContextClientVersion(2)
 
         mRenderer = CanvasRenderer()
+        mScaleGestureDetector = ScaleGestureDetector(context, this)
 
         setRenderer(mRenderer)
 
@@ -33,9 +43,14 @@ class CanvasView(
         val x: Float = e.x
         val y: Float = e.y
 
-        // todo: implement ZOOMing gesture..
+        if (e.pointerCount == 2) {
+            mScaleGestureDetector.onTouchEvent(e)
+            requestRender()
 
+            return true
 
+        } else if (e.pointerCount > 2)
+            return false
 
         when (e.action) {
             MotionEvent.ACTION_MOVE -> {
@@ -52,5 +67,27 @@ class CanvasView(
         previousY = y
 
         return true
+    }
+
+    override fun onScale(detector: ScaleGestureDetector): Boolean {
+        mTotalScaleFactor *= (detector.scaleFactor)
+
+        mRenderer.handleScale(mTotalScaleFactor)
+
+        Log.d(TAG, "onScale: mTotalScaleFactor = $mTotalScaleFactor; scaleFactor = ${detector.scaleFactor};")
+
+        return true
+    }
+
+    override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+        mTotalScaleFactor = 1f
+
+        return true
+    }
+
+    override fun onScaleEnd(detector: ScaleGestureDetector) {
+        // ??
+
+
     }
 }
