@@ -1,6 +1,6 @@
-package com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry.parallelepiped
+package com.qubacy.kotlintrainingopengl.geometry.parallelepiped
 
-import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry._common.Figure
+import com.qubacy.kotlintrainingopengl.geometry._common.Figure
 
 class Parallelepiped(
     vertexArray: FloatArray

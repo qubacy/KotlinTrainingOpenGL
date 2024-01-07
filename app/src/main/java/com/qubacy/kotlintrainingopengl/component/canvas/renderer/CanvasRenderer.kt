@@ -4,8 +4,9 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView.Renderer
 import android.opengl.Matrix
 import android.util.Log
-import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry._common.Figure
-import com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry.parallelepiped.Parallelepiped
+import com.qubacy.kotlintrainingopengl.geometry._common.Figure
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.PI
@@ -14,12 +15,14 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class CanvasRenderer : Renderer {
+class CanvasRenderer(
+
+) : Renderer {
     companion object {
         const val TAG = "CANVAS_RENDERER"
 
         private val CENTER_POSITION = floatArrayOf(0f, 0f, 0f)
-        private const val DEFAULT_SPHERE_RADIUS = 7f
+        private const val DEFAULT_SPHERE_RADIUS = 8f
 
         private const val MIN_SCALE_FACTOR = 0.25f
         private const val MAX_SCALE_FACTOR = 3f
@@ -28,8 +31,6 @@ class CanvasRenderer : Renderer {
     private val mVPMatrix = FloatArray(16)
     private val mProjectionMatrix = FloatArray(16)
     private val mViewMatrix = FloatArray(16)
-
-    private lateinit var mFigure: Figure
 
     private var mSphereRadius = DEFAULT_SPHERE_RADIUS
     private var mCameraRadius = mSphereRadius
@@ -46,6 +47,35 @@ class CanvasRenderer : Renderer {
     private var mViewportRatio = 1f
     @Volatile
     private var mCurScaleFactor = 1f
+
+    private var mFigure: Figure? = null
+    private val mIsFigureBlocked = Mutex(false)
+
+    @Volatile
+    private var mIsCameraLocationInitialized = false
+
+    suspend fun setFigure(figure: Figure) {
+        mIsFigureBlocked.lock()
+
+        mFigure = figure
+
+        mSphereRadius = mFigure!!.vertexArray.map { abs(it) }.max() + DEFAULT_SPHERE_RADIUS
+        mCameraRadius = mSphereRadius
+
+        mCameraCenterLocation = floatArrayOf(0f, 0f, 0f)
+
+        mCameraMadeWayHorizontal = 0f
+        mCameraMadeWayVertical = 0f
+        mCurScaleFactor = 1f
+        mIsCameraLocationInitialized = false
+
+        setDefaultCameraLocation()
+        setFrustum()
+
+        mIsCameraLocationInitialized = true
+
+        mIsFigureBlocked.unlock()
+    }
 
     private fun getTranslatedCameraLocation(dx: Float, dy: Float): FloatArray {
         val signedDX = dx * -1
@@ -73,13 +103,9 @@ class CanvasRenderer : Renderer {
             val cameraWayLength = (PI * mSphereRadius / 2).toFloat()
             val cameraMadeWayNormalized = signedDY + mCameraMadeWayVertical
 
-            Log.d(TAG, "getTranslatedCameraLocation(): cameraMadeWayNormalized = $cameraMadeWayNormalized;")
-
             if (abs(cameraMadeWayNormalized) >= cameraWayLength) return mCameraLocation
 
             val madeWayAngleVertical = cameraMadeWayNormalized / mSphereRadius
-
-            Log.d(TAG, "getTranslatedCameraLocation(): madeWayAngleVertical = $madeWayAngleVertical;")
 
             newZ = CENTER_POSITION[2] + mSphereRadius * sin(madeWayAngleVertical)
             val newCameraRadius = sqrt(mSphereRadius * mSphereRadius - newZ * newZ)
@@ -95,8 +121,6 @@ class CanvasRenderer : Renderer {
             mCameraMadeWayVertical = cameraMadeWayNormalized
         }
 
-        Log.d(TAG, "getTranslatedCameraLocation(): dx = $dx; dy = $dy; newX = $newX; newY = $newY; newZ = $newZ")
-
         return floatArrayOf(newX, newY, newZ)
     }
 
@@ -111,30 +135,33 @@ class CanvasRenderer : Renderer {
 
         mCurScaleFactor = newScaleFactor
 
+        setFrustum()
+    }
+
+    private fun setFrustum() {
         Matrix.frustumM(
             mProjectionMatrix, 0,
             -mViewportRatio, mViewportRatio,
             -1f, 1f,
-            3f, mSphereRadius * mCurScaleFactor + 1f
+            3f * (1 / mCurScaleFactor), mSphereRadius * 2 * (1 / mCurScaleFactor)
         )
+    }
+
+    private fun setDefaultCameraLocation() {
+        if (mIsCameraLocationInitialized) return
+
+        //val initCameraVerticalMadeWay = PI * mSphereRadius / 4f
+
+        mCameraLocation = floatArrayOf(mCameraRadius, 0f, mCameraCenterLocation[2])
+        //mCameraLocation = getTranslatedCameraLocation(0f, initCameraVerticalMadeWay.toFloat())
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
 
-        mFigure = Parallelepiped(
-            floatArrayOf(
-                -0.5f, -0.5f, -0.5f,
-                -0.5f, -0.5f, 0.5f,
-                -0.5f, 0.5f, -0.5f,
-                -0.5f, 0.5f, 0.5f,
-                0.5f, -0.5f, -0.5f,
-                0.5f, -0.5f, 0.5f,
-                0.5f, 0.5f, -0.5f,
-                0.5f, 0.5f, 0.5f
-            )
-        )
-        mCameraLocation = getTranslatedCameraLocation(0f, 12f)
+        mFigure?.init()
+
+        setDefaultCameraLocation()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -142,15 +169,12 @@ class CanvasRenderer : Renderer {
 
         mViewportRatio = width.toFloat() / height.toFloat()
 
-        Matrix.frustumM(
-            mProjectionMatrix, 0,
-            -mViewportRatio, mViewportRatio,
-            -1f, 1f,
-            3f, mSphereRadius + 1f
-        )
+        setFrustum()
     }
 
-    override fun onDrawFrame(gl: GL10?) {
+    override fun onDrawFrame(gl: GL10?) = runBlocking {
+        mIsFigureBlocked.lock()
+
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
@@ -180,6 +204,10 @@ class CanvasRenderer : Renderer {
 //
 //        Matrix.multiplyMM(rotated, 0, mVPMatrix, 0, rotationMatrix, 0)
 
-        mFigure.draw(mVPMatrix)
+         if (mFigure?.isInitialized == false) mFigure!!.init()
+
+         mFigure?.draw(mVPMatrix)
+
+         mIsFigureBlocked.unlock()
     }
 }

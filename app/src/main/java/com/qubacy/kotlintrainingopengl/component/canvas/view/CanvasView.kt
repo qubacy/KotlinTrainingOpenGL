@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.ScaleGestureDetector.OnScaleGestureListener
 import com.qubacy.kotlintrainingopengl.component.canvas.renderer.CanvasRenderer
+import com.qubacy.kotlintrainingopengl.geometry._common.Figure
 
 class CanvasView(
     context: Context,
@@ -26,6 +27,9 @@ class CanvasView(
 
     private var mLastScaleEventTimestamp = 0L
 
+    private var previousX: Float = 0f
+    private var previousY: Float = 0f
+
     init {
         setEGLContextClientVersion(2)
 
@@ -37,8 +41,11 @@ class CanvasView(
         renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
     }
 
-    private var previousX: Float = 0f
-    private var previousY: Float = 0f
+    suspend fun setFigure(figure: Figure) {
+        mRenderer.setFigure(figure)
+
+        requestRender()
+    }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         val x: Float = e.x

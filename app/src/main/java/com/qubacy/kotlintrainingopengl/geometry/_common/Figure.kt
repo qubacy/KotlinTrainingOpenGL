@@ -1,4 +1,4 @@
-package com.qubacy.kotlintrainingopengl.component.canvas.renderer.geometry._common
+package com.qubacy.kotlintrainingopengl.geometry._common
 
 import android.opengl.GLES20
 import com.qubacy.kotlintrainingopengl.component.canvas.renderer._common.util.GL2Util
@@ -28,7 +28,7 @@ abstract class Figure(
         "void main() {" +
         "  gl_FragColor = vColor;" +
         "}"
-    protected var mProgram: Int
+    protected var mProgram: Int = 0
 
     protected var mVPMatrixHandle: Int = 0
 
@@ -49,9 +49,12 @@ abstract class Figure(
             }
         }
         else null
-    val vertexCount = vertexArray.size / COORDS_PER_VERTEX
+    private val mVertexCount = vertexArray.size / COORDS_PER_VERTEX
 
-    init {
+    private var mIsInitialized = false
+    val isInitialized get () = mIsInitialized
+
+    fun init() {
         val vertexShader = GL2Util.loadShader(GLES20.GL_VERTEX_SHADER, mVertexShaderCode)
         val fragmentShader = GL2Util.loadShader(GLES20.GL_FRAGMENT_SHADER, mFragmentShaderCode)
 
@@ -61,6 +64,8 @@ abstract class Figure(
 
             GLES20.glLinkProgram(this)
         }
+
+        mIsInitialized = true
     }
 
     fun draw(mvpMatrix: FloatArray) {
@@ -88,7 +93,7 @@ abstract class Figure(
                 GLES20.glDrawElements(GLES20.GL_TRIANGLES, vertexDrawingOrder!!.size,
                     GLES20.GL_UNSIGNED_SHORT, mVertexDrawingOrderBuffer)
             else
-                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, mVertexCount)
 
             GLES20.glDisableVertexAttribArray(it)
         }
