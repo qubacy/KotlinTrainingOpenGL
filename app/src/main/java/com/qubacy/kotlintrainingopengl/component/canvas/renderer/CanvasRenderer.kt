@@ -38,6 +38,8 @@ class CanvasRenderer(
     @Volatile
     private var mCameraCenterLocation = floatArrayOf(0f, 0f, 0f)
     @Volatile
+    private var mViewCenterLocation = floatArrayOf(0f, 0f, 0f)
+    @Volatile
     private var mCameraLocation = floatArrayOf(mCameraRadius, 0f, mCameraCenterLocation[2])
     @Volatile
     private var mCameraMadeWayHorizontal = 0f
@@ -54,6 +56,34 @@ class CanvasRenderer(
     @Volatile
     private var mIsCameraLocationInitialized = false
 
+    private fun getFigureCenterPoint(figure: Figure): FloatArray {
+        var minX = figure.vertexArray[0]
+        var maxX = figure.vertexArray[0]
+
+        var minY = figure.vertexArray[1]
+        var maxY = figure.vertexArray[1]
+
+        var minZ = figure.vertexArray[2]
+        var maxZ = figure.vertexArray[2]
+
+        for (i in 0 until figure.vertexArray.size - 2 step (3)) {
+            if (figure.vertexArray[i + 0] < minX) minX = figure.vertexArray[i + 0]
+            if (figure.vertexArray[i + 0] > maxX) maxX = figure.vertexArray[i + 0]
+
+            if (figure.vertexArray[i + 1] < minY) minY = figure.vertexArray[i + 1]
+            if (figure.vertexArray[i + 1] > maxY) maxY = figure.vertexArray[i + 1]
+
+            if (figure.vertexArray[i + 2] < minZ) minZ = figure.vertexArray[i + 2]
+            if (figure.vertexArray[i + 2] > maxZ) maxZ = figure.vertexArray[i + 2]
+        }
+
+        return floatArrayOf(
+            (minX + maxX) / 2,
+            (minY + maxY) / 2,
+            (minZ + maxZ) / 2
+        )
+    }
+
     suspend fun setFigure(figure: Figure) {
         mIsFigureBlocked.lock()
 
@@ -62,7 +92,8 @@ class CanvasRenderer(
         mSphereRadius = mFigure!!.vertexArray.map { abs(it) }.max() + DEFAULT_SPHERE_RADIUS
         mCameraRadius = mSphereRadius
 
-        mCameraCenterLocation = floatArrayOf(0f, 0f, 0f)
+        mViewCenterLocation = getFigureCenterPoint(figure)
+        mCameraCenterLocation = floatArrayOf(0f, 0f, mViewCenterLocation[2])
 
         mCameraMadeWayHorizontal = 0f
         mCameraMadeWayVertical = 0f
@@ -150,10 +181,10 @@ class CanvasRenderer(
     private fun setDefaultCameraLocation() {
         if (mIsCameraLocationInitialized) return
 
-        //val initCameraVerticalMadeWay = PI * mSphereRadius / 4f
+        val initCameraVerticalMadeWay = PI * mSphereRadius / 4f
 
         mCameraLocation = floatArrayOf(mCameraRadius, 0f, mCameraCenterLocation[2])
-        //mCameraLocation = getTranslatedCameraLocation(0f, initCameraVerticalMadeWay.toFloat())
+        mCameraLocation = getTranslatedCameraLocation(0f, initCameraVerticalMadeWay.toFloat())
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -183,7 +214,7 @@ class CanvasRenderer(
             mCameraLocation[0] * mCurScaleFactor,
             mCameraLocation[1] * mCurScaleFactor,
             mCameraLocation[2] * mCurScaleFactor,
-            0f, 0f, 0f,
+            mViewCenterLocation[0], mViewCenterLocation[1], mViewCenterLocation[2],
             0f, 0f, 1.0f
         )
         Matrix.multiplyMM(
