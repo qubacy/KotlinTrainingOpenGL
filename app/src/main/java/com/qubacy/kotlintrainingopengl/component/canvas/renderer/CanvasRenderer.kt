@@ -131,7 +131,7 @@ class CanvasRenderer(
             mCameraMadeWayHorizontal = cameraMadeWayNormalized
 
         } else {
-            val cameraWayLength = (PI * mSphereRadius / 2).toFloat()
+            val cameraWayLength = (0.8 * PI * mSphereRadius / 2).toFloat()
             val cameraMadeWayNormalized = signedDY + mCameraMadeWayVertical
 
             if (abs(cameraMadeWayNormalized) >= cameraWayLength) return mCameraLocation
